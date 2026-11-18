@@ -44,11 +44,17 @@ poll() {
 need_app() { : "${GODADDY_APP_ID:?Falta la variable de repo GODADDY_APP_ID}"; }
 
 cmd_list_apps()      { api GET '/apps' | jq '.items[] | {id, name, status, region, updatedAt}'; }
-cmd_subscriptions()  { api GET '/subscriptions?hostingProduct=WEB_HOSTING' | jq '.items'; }
+# El repo es público: los IDs de suscripción se enmascaran y solo se muestran campos operativos.
+cmd_subscriptions() {
+  local body
+  body=$(api GET '/subscriptions?hostingProduct=WEB_HOSTING')
+  jq -r '.items[].subscriptionId' <<<"$body" | while read -r id; do echo "::add-mask::$id"; done
+  jq '.items[] | {label, tier, status, attachedCount, slotLimit, availableSlots}' <<<"$body"
+}
 cmd_status()         { need_app; api GET "/apps/$GODADDY_APP_ID/status" | jq '{status, variants}'; }
 cmd_app()            { need_app; api GET "/apps/$GODADDY_APP_ID" | jq; }
 cmd_deployments()    { need_app; api GET "/apps/$GODADDY_APP_ID/deployments?pageSize=10" | jq '.items'; }
-cmd_secrets()        { need_app; api GET "/apps/$GODADDY_APP_ID/secrets?variant=${VARIANT:-PUBLISH}" | jq; }
+cmd_secrets()        { need_app; api GET "/apps/$GODADDY_APP_ID/secrets?variant=${VARIANT:-PUBLISH}" | jq '[.items[]? | {name, updatedAt}]'; }
 cmd_logs() {
   need_app
   api GET "/apps/$GODADDY_APP_ID/logs?variant=${VARIANT:-PUBLISH}&pageSize=${LINES:-200}" | jq -r '.items[]? | "\(.timestamp) \(.level) [\(.source)] \(.message)"'
@@ -70,9 +76,10 @@ cmd_bootstrap() {
   sub=$(api GET '/subscriptions?hostingProduct=WEB_HOSTING' \
     | jq -r '[.items[] | select((.availableSlots // 0) > 0)][0].subscriptionId // empty')
   [[ -n $sub ]] || die "No hay planes de web hosting con lugares libres"
+  echo "::add-mask::$sub"
   api PUT "/apps/$app_id/subscription" -H 'Content-Type: application/json' \
     -d "$(jq -nc --arg s "$sub" '{subscriptionId:$s}')" >/dev/null
-  log "Adjuntada al plan $sub"
+  log "Adjuntada al plan de web hosting con lugar libre"
   echo "GODADDY_APP_ID=$app_id"
   [[ -n ${GITHUB_STEP_SUMMARY:-} ]] && echo "**GODADDY_APP_ID=\`$app_id\`**" >> "$GITHUB_STEP_SUMMARY"
 }

@@ -77,3 +77,9 @@ HEARTBEAT_TOKEN=dev npm start    # http://localhost:3000
   accesible desde Internet.
 - `public/` es una copia de `ocre-os/apps/os-status` (commit `33c55ce`) más `config.js` y un override
   de destinos en `app.js`. Los cambios de UI deben llevarse a ambos lados hasta consolidar una sola fuente.
+
+## Repo público
+
+Este repo es público para que GitHub Actions corra sin costo. Los secretos viven solo en GitHub y
+GoDaddy; `godaddy.sh` enmascara IDs de suscripción y no imprime valores de secretos. Solo quien tiene
+escritura en `ocre-os/status` puede lanzar `ops.yml`.
