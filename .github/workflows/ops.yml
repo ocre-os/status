@@ -6,7 +6,7 @@ on:
         description: Operación
         required: true
         type: choice
-        options: [status, app, deployments, logs, secrets, restart, list-apps, subscriptions, domains, attach-domain, bootstrap, delete-app]
+        options: [status, app, deployments, logs, secrets, restart, list-apps, subscriptions, domains, attach-domain, rotate-heartbeat-token, bootstrap, delete-app]
       variant:
         description: Variante (logs, secrets, restart)
         type: choice

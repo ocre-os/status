@@ -128,6 +128,25 @@ cmd_sync_secrets() {
   done
 }
 
+# Genera un HEARTBEAT_TOKEN nuevo, lo guarda en ambas variantes, reinicia PUBLISH y lo imprime
+# cifrado con la llave pública de la X280 (config/heartbeat-recipient.pem). Solo la X280 puede abrirlo,
+# así que el registro público del workflow no lo expone.
+cmd_rotate_heartbeat_token() {
+  need_app
+  local pem token sealed
+  pem="$(dirname "$0")/../config/heartbeat-recipient.pem"
+  [[ -f $pem ]] || die "Falta $pem"
+  token=$(openssl rand -hex 32)
+  echo "::add-mask::$token"
+  HEARTBEAT_TOKEN=$token SYNC_SECRETS=HEARTBEAT_TOKEN cmd_sync_secrets
+  api POST "/apps/$GODADDY_APP_ID/restarts" -H "$(idem)" -H 'Content-Type: application/json' -d '{"variant":"PUBLISH"}' >/dev/null
+  log "PUBLISH reiniciado con el token nuevo"
+  sealed=$(printf '%s' "$token" | openssl pkeyutl -encrypt -pubin -inkey "$pem" \
+    -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256 | base64 -w0)
+  unset token
+  echo "HEARTBEAT_TOKEN_SEALED=$sealed"
+}
+
 # Sube el código de HEAD como zip a preview, publica y verifica que PUBLISH quede ACTIVE/running.
 cmd_deploy() {
   need_app
