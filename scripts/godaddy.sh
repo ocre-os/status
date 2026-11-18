@@ -6,6 +6,13 @@ set -euo pipefail
 API="${GODADDY_API:-https://api.godaddy.com/v1/hosting}"
 : "${GDDY_PAT:?Falta GDDY_PAT (secreto de GitHub Actions)}"
 
+# Configuración versionada (no secreta); una variable de entorno explícita tiene prioridad.
+CONFIG_FILE="$(dirname "$0")/../config/godaddy.env"
+if [[ -f $CONFIG_FILE ]]; then
+  _cfg_app=$(sed -n 's/^GODADDY_APP_ID=//p' "$CONFIG_FILE")
+  GODADDY_APP_ID=${GODADDY_APP_ID:-$_cfg_app}
+fi
+
 log() { echo "::notice::$*"; }
 die() { echo "::error::$*"; exit 1; }
 

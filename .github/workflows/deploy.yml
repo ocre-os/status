@@ -38,8 +38,9 @@ jobs:
       - name: Comprobar configuración
         id: cfg
         run: |
+          [ -z "$GODADDY_APP_ID" ] && GODADDY_APP_ID=$(sed -n 's/^GODADDY_APP_ID=//p' config/godaddy.env 2>/dev/null)
           if [ -z "$GDDY_PAT" ] || [ -z "$GODADDY_APP_ID" ]; then
-            echo "::warning::Falta el secreto GDDY_PAT o la variable GODADDY_APP_ID: no se despliega."
+            echo "::warning::Falta el secreto GDDY_PAT o GODADDY_APP_ID (config/godaddy.env): no se despliega."
             echo "ready=false" >> "$GITHUB_OUTPUT"
           else
             echo "ready=true" >> "$GITHUB_OUTPUT"

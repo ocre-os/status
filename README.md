@@ -43,7 +43,7 @@ Configuración del repo (entorno `production`):
 |---|---|---|
 | Secreto | `GDDY_PAT` | PAT de GoDaddy con los scopes `hosting.*` (abajo) |
 | Secreto | `HEARTBEAT_TOKEN` | cadena aleatoria larga; el deploy la copia a GoDaddy |
-| Variable | `GODADDY_APP_ID` | ID que imprime `ops.yml -f op=bootstrap` |
+| Archivo | `config/godaddy.env` | `GODADDY_APP_ID` (no secreto; lo imprime `ops.yml -f op=bootstrap`) |
 | Variable | `PUBLIC_URL` | opcional, p. ej. `https://status.ocre.mx` para el smoke test |
 
 Scopes del PAT: `hosting.application:read/create/update/delete`, `hosting.deployment:execute`,
