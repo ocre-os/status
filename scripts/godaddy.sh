@@ -50,7 +50,7 @@ poll() {
 
 need_app() { : "${GODADDY_APP_ID:?Falta la variable de repo GODADDY_APP_ID}"; }
 
-cmd_list_apps()      { api GET '/apps' | jq '.items[] | {id, name, status, region, updatedAt}'; }
+cmd_list_apps()      { api GET '/apps?appType=NODEJS' | jq '.items[] | {id, name, status, region, updatedAt}'; }
 # El repo es público: los IDs de suscripción se enmascaran y solo se muestran campos operativos.
 cmd_subscriptions() {
   local body
