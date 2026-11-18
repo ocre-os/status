@@ -4,7 +4,7 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const { Relay, MAX_BODY_BYTES } = require('./lib/relay');
+const { Relay, ChannelRelay, CHANNELS, MAX_BODY_BYTES } = require('./lib/relay');
 
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const TYPES = {
@@ -75,7 +75,7 @@ function serveStatic(req, res, pathname) {
   });
 }
 
-function createServer({ relay = new Relay(), token = process.env.HEARTBEAT_TOKEN } = {}) {
+function createServer({ relay = new Relay(), channels = new ChannelRelay(), token = process.env.HEARTBEAT_TOKEN } = {}) {
   return http.createServer(async (req, res) => {
     const { pathname } = new URL(req.url, 'http://localhost');
     try {
@@ -98,6 +98,29 @@ function createServer({ relay = new Relay(), token = process.env.HEARTBEAT_TOKEN
           return sendJson(res, error.code === 'too_large' ? 413 : 400, { error: error.code === 'too_large' ? 'too_large' : 'invalid_json' });
         }
         const result = relay.accept(payload);
+        return result.ok ? sendJson(res, 202, { accepted: true }) : sendJson(res, 422, { error: result.error });
+      }
+      const read = pathname.match(/^\/api\/(agents|devenv)$/);
+      if (read) {
+        if (req.method === 'OPTIONS') {
+          res.writeHead(204, { ...SECURITY_HEADERS, ...corsHeaders() });
+          return res.end();
+        }
+        if (req.method !== 'GET') return sendJson(res, 405, { error: 'method_not_allowed' }, { Allow: 'GET' });
+        return sendJson(res, 200, channels.snapshot(read[1]), corsHeaders());
+      }
+      const write = pathname.match(/^\/api\/heartbeat\/(agents|devenv)$/);
+      if (write) {
+        if (req.method !== 'POST') return sendJson(res, 405, { error: 'method_not_allowed' }, { Allow: 'POST' });
+        if (!token) return sendJson(res, 503, { error: 'heartbeat_token_not_configured' });
+        if (!tokenMatches(req.headers.authorization, token)) return sendJson(res, 401, { error: 'unauthorized' });
+        let payload;
+        try {
+          payload = JSON.parse(await readBody(req));
+        } catch (error) {
+          return sendJson(res, error.code === 'too_large' ? 413 : 400, { error: error.code === 'too_large' ? 'too_large' : 'invalid_json' });
+        }
+        const result = channels.accept(write[1], payload);
         return result.ok ? sendJson(res, 202, { accepted: true }) : sendJson(res, 422, { error: result.error });
       }
       if (pathname === '/healthz') return sendJson(res, 200, { ok: true });

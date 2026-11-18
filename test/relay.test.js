@@ -133,3 +133,24 @@ test('HTTP: sin HEARTBEAT_TOKEN el endpoint de escritura queda cerrado', async (
     assert.equal(res.status, 503);
   });
 });
+
+test('canales agents/devenv: token, contrato, reenvío intacto y frescura', async () => {
+  const devenv = { contract: 'ocre-devenv-v1', observed_at: new Date().toISOString(),
+    agents: { claude: { slots_used: 0, quota: { state: 'available', remaining_percent: 40, observed_at: new Date().toISOString() } } }, events: [] };
+  await withServer({ token: 'secreto-de-prueba' }, async (base) => {
+    const post = (path, body, auth = 'Bearer secreto-de-prueba') =>
+      fetch(`${base}${path}`, { method: 'POST', headers: { Authorization: auth }, body: JSON.stringify(body) });
+    const empty = await (await fetch(`${base}/api/devenv`)).json();
+    assert.equal(empty.relay.state, 'no_heartbeat');
+    assert.equal(empty.observed_at, null);
+    assert.equal((await post('/api/heartbeat/devenv', devenv, 'Bearer otro')).status, 401);
+    assert.equal((await post('/api/heartbeat/devenv', { ...devenv, contract: 'ocre-agents-v1' })).status, 422);
+    assert.equal((await post('/api/heartbeat/agents', { contract: 'ocre-agents-v1', observed_at: 'x', agents: {} })).status, 422);
+    assert.equal((await post('/api/heartbeat/otro', devenv)).status, 405);
+    assert.equal((await post('/api/heartbeat/devenv', devenv)).status, 202);
+    const got = await (await fetch(`${base}/api/devenv`)).json();
+    assert.equal(got.relay.state, 'current');
+    assert.deepEqual(got.agents, devenv.agents); // Core es la fuente: se reenvía sin reinterpretar
+    assert.equal((await fetch(`${base}/api/agents`, { method: 'POST' })).status, 405);
+  });
+});

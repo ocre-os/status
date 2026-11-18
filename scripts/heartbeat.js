@@ -8,12 +8,18 @@
 //   RELAY_URL         https://status.ocre.mx/api/heartbeat
 //   HEARTBEAT_TOKEN   el mismo valor guardado como secreto en GoDaddy
 //   INTERVAL_MS       opcional, 10000 por defecto (la UI marca obsoleta una muestra congelada a los 25 s)
+//   AGENTS_SOURCE_URL opcional, p. ej. http://127.0.0.1:3001/api/agents (Core de staging, fuente de verdad)
+//   DEVENV_SOURCE_URL opcional, p. ej. http://127.0.0.1:3001/api/devenv
 
 const CORE_STATUS_URL = process.env.CORE_STATUS_URL;
 const RELAY_URL = process.env.RELAY_URL;
 const TOKEN = process.env.HEARTBEAT_TOKEN;
 const INTERVAL_MS = Math.max(5000, Number(process.env.INTERVAL_MS) || 10000);
 const TIMEOUT_MS = 5000;
+const CHANNELS = {
+  agents: { source: process.env.AGENTS_SOURCE_URL, contract: 'ocre-agents-v1' },
+  devenv: { source: process.env.DEVENV_SOURCE_URL, contract: 'ocre-devenv-v1' },
+};
 
 for (const [name, value] of Object.entries({ CORE_STATUS_URL, RELAY_URL, HEARTBEAT_TOKEN: TOKEN })) {
   if (!value) {
@@ -56,12 +62,33 @@ async function beat() {
   }
 }
 
+// Reenvía tal cual lo que Core publica en agents/devenv; si Core no responde o el contrato no cuadra,
+// no se manda nada y el relay deja envejecer la última muestra (la UI la marcará como no vigente).
+async function forward(name, { source, contract }) {
+  if (!source) return;
+  try {
+    const res = await fetch(source, { signal: AbortSignal.timeout(TIMEOUT_MS), cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const body = await res.json();
+    if (body?.contract !== contract) throw new Error('contrato inesperado');
+    const out = await fetch(`${RELAY_URL}/${name}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN}` },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (out.status !== 202) console.warn(new Date().toISOString(), `relay ${name}:`, out.status, await out.text());
+  } catch (error) {
+    console.warn(new Date().toISOString(), `${name} no se reenvió:`, error.message);
+  }
+}
+
 let running = false;
 async function tick() {
   if (running) return; // nunca encimar dos envíos
   running = true;
   try {
-    await beat();
+    await Promise.all([beat(), ...Object.entries(CHANNELS).map(([name, cfg]) => forward(name, cfg))]);
   } finally {
     running = false;
   }

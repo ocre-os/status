@@ -23,6 +23,8 @@ navegador ◀── página os-status ◀── /api/status (último ocre-status
 |---|---|---|
 | GET | `/api/status` | Último estado + bloque `relay` (frescura según el reloj del servidor). Público, CORS abierto. |
 | POST | `/api/heartbeat` | Solo con `Authorization: Bearer $HEARTBEAT_TOKEN`. Máx. 64 KB. |
+| GET | `/api/agents`, `/api/devenv` | Última muestra `ocre-agents-v1` / `ocre-devenv-v1` de Core, intacta, más bloque `relay`. La UI juzga la frescura por `observed_at`. |
+| POST | `/api/heartbeat/agents`, `/api/heartbeat/devenv` | Mismo token. Core (staging, en la X280) es la fuente de verdad de esos contratos; el relay no los reinterpreta. |
 | GET | `/healthz` | Comprobación de vida del servicio. |
 | GET | `/` | Página de estado (copia de `ocre-os/apps/os-status`, con `config.js`). |
 
@@ -61,7 +63,11 @@ HEARTBEAT_TOKEN=<mismo valor que en GoDaddy> \
 node scripts/heartbeat.js
 ```
 
-Debe correr como servicio (systemd/pm2) para que arranque con la X280.
+Opcionales: `AGENTS_SOURCE_URL=http://127.0.0.1:3001/api/agents` y
+`DEVENV_SOURCE_URL=http://127.0.0.1:3001/api/devenv` para reenviar agentes y entorno de desarrollo.
+
+Corre como servicio de usuario de systemd en WSL (`ocre-status-heartbeat.service`); el token llega
+cifrado con `ops.yml -f op=rotate-heartbeat-token` y solo la X280 puede abrirlo.
 
 ## Desarrollo
 
