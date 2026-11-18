@@ -89,3 +89,8 @@ HEARTBEAT_TOKEN=dev npm start    # http://localhost:3000
 Este repo es público para que GitHub Actions corra sin costo. Los secretos viven solo en GitHub y
 GoDaddy; `godaddy.sh` enmascara IDs de suscripción y no imprime valores de secretos. Solo quien tiene
 escritura en `ocre-os/status` puede lanzar `ops.yml`.
+
+## Recursos de UI/UX
+
+VP0 y 21st.dev están configurados como servidores MCP en `.mcp.json`. Guía de uso y de la cuota diaria
+gratuita de 21st.dev: [ocre-os/web · docs/recursos-ui.md](https://github.com/ocre-os/web/blob/main/docs/recursos-ui.md).
