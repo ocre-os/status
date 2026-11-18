@@ -1,0 +1,55 @@
+name: Deploy GoDaddy
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-godaddy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm test
+      - run: npm run build
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      GDDY_PAT: ${{ secrets.GDDY_PAT }}
+      GODADDY_APP_ID: ${{ vars.GODADDY_APP_ID }}
+      PUBLIC_URL: ${{ vars.PUBLIC_URL }}
+      HEARTBEAT_TOKEN: ${{ secrets.HEARTBEAT_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Comprobar configuración
+        id: cfg
+        run: |
+          if [ -z "$GDDY_PAT" ] || [ -z "$GODADDY_APP_ID" ]; then
+            echo "::warning::Falta el secreto GDDY_PAT o la variable GODADDY_APP_ID: no se despliega."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Sincronizar secretos
+        if: steps.cfg.outputs.ready == 'true'
+        run: scripts/godaddy.sh sync-secrets
+      - name: Subir y publicar
+        if: steps.cfg.outputs.ready == 'true'
+        run: scripts/godaddy.sh deploy
+      - name: Smoke test
+        if: steps.cfg.outputs.ready == 'true'
+        run: scripts/godaddy.sh smoke

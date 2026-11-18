@@ -26,10 +26,31 @@ navegador ◀── página os-status ◀── /api/status (último ocre-status
 | GET | `/healthz` | Comprobación de vida del servicio. |
 | GET | `/` | Página de estado (copia de `ocre-os/apps/os-status`, con `config.js`). |
 
-## Configuración en GoDaddy
+## Despliegue y operación (sin panel)
 
-Secreto en la variante **preview** y en **publish**: `HEARTBEAT_TOKEN` (cadena aleatoria larga).
-`PORT` lo asigna la plataforma.
+Todo pasa por la Hosting API de GoDaddy (`https://api.godaddy.com/v1/hosting`) desde GitHub Actions,
+con `scripts/godaddy.sh`. Nadie despliega desde la X280 ni desde el panel web.
+
+| Workflow | Cuándo | Qué hace |
+|---|---|---|
+| `deploy.yml` | push a `main` (o manual) | pruebas → copia secretos a preview y publish → sube zip → publica → verifica PUBLISH `ACTIVE/running` → smoke test |
+| `ops.yml` | `gh workflow run ops.yml -f op=<op>` | `status`, `app`, `deployments`, `logs`, `secrets`, `restart`, `list-apps`, `subscriptions`, `bootstrap`, `delete-app` |
+| `test.yml` | pull requests | pruebas |
+
+Configuración del repo (entorno `production`):
+
+| Tipo | Nombre | Valor |
+|---|---|---|
+| Secreto | `GDDY_PAT` | PAT de GoDaddy con los scopes `hosting.*` (abajo) |
+| Secreto | `HEARTBEAT_TOKEN` | cadena aleatoria larga; el deploy la copia a GoDaddy |
+| Variable | `GODADDY_APP_ID` | ID que imprime `ops.yml -f op=bootstrap` |
+| Variable | `PUBLIC_URL` | opcional, p. ej. `https://status.ocre.mx` para el smoke test |
+
+Scopes del PAT: `hosting.application:read/create/update/delete`, `hosting.deployment:execute`,
+`hosting.source:read/write`, `hosting.secret:read/write`, `hosting.log:read`, `hosting.domain:read/write`,
+`hosting.subscription:read/write`.
+
+`delete-app` exige repetir el App ID en `confirm`. `PORT` lo asigna la plataforma.
 
 ## En la X280
 

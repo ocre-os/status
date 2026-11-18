@@ -1,0 +1,42 @@
+name: Ops GoDaddy
+on:
+  workflow_dispatch:
+    inputs:
+      op:
+        description: Operación
+        required: true
+        type: choice
+        options: [status, app, deployments, logs, secrets, restart, list-apps, subscriptions, bootstrap, delete-app]
+      variant:
+        description: Variante (logs, secrets, restart)
+        type: choice
+        options: [PUBLISH, PREVIEW]
+        default: PUBLISH
+      app_name:
+        description: Nombre para bootstrap
+        default: ocre-status
+      target_app_id:
+        description: App ID a borrar (delete-app)
+        default: ''
+      confirm:
+        description: Repite el App ID para confirmar delete-app
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  op:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      GDDY_PAT: ${{ secrets.GDDY_PAT }}
+      GODADDY_APP_ID: ${{ vars.GODADDY_APP_ID }}
+      VARIANT: ${{ inputs.variant }}
+      APP_NAME: ${{ inputs.app_name }}
+      TARGET_APP_ID: ${{ inputs.target_app_id }}
+      CONFIRM: ${{ inputs.confirm }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: scripts/godaddy.sh "${{ inputs.op }}"
