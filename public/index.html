@@ -3,128 +3,148 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#070b0d">
-  <title>OCRE OS Status</title>
-  <link rel="stylesheet" href="styles.css?v=20261030-ocre075">
-  <link rel="stylesheet" href="compact.css?v=20261030-ocre075">
+  <meta name="theme-color" content="#1d2125">
+  <meta name="color-scheme" content="dark">
+  <title>OCRE OS · Estado</title>
+  <link rel="preload" href="fonts/barlow-condensed-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/barlow-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="board.css?v=20261118-tablero1">
 </head>
-<body>
-  <div class="ambient" aria-hidden="true"></div>
-  <main id="normalMode" class="shell">
+<body data-overall="checking">
+  <div id="normalMode" class="board">
     <header class="topbar">
-      <a class="brand" href="../" aria-label="Volver a OCRE Apps">
-        <span class="brand-mark">O</span>
-        <span><strong>OCRE OS</strong><small>STATUS / LIVE DIAGNOSTICS</small></span>
+      <a class="brand" href="../" aria-label="OCRE OS, volver a OCRE Apps">
+        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11.5" fill="none" stroke="currentColor" stroke-width="5" stroke-dasharray="58 14.3" transform="rotate(-48 16 16)"/></svg>
+        <span class="brand-name">OCRE OS</span>
+        <span class="brand-sub">Estado del sistema</span>
       </a>
-      <div class="top-actions">
-        <button id="matrixToggle" class="ghost matrix-trigger" type="button">MATRIX MODE</button>
-        <button id="refreshButton" class="refresh" type="button"><span class="refresh-icon">↻</span> Comprobar ahora</button>
+
+      <div class="env-switch" role="group" aria-label="Entorno">
+        <button class="env" data-env="core" type="button" aria-pressed="true">Core</button>
+        <button class="env" data-env="staging" type="button" aria-pressed="false">Staging</button>
+      </div>
+
+      <div class="top-right">
+        <div id="live" class="live" data-state="checking" role="status" aria-live="polite">
+          <svg class="live-ring" viewBox="0 0 20 20" aria-hidden="true"><circle class="live-track" cx="10" cy="10" r="8"/><circle id="liveProgress" class="live-progress" cx="10" cy="10" r="8"/></svg>
+          <span class="live-text"><strong id="liveLabel">Comprobando</strong><small id="liveDetail">primera lectura</small></span>
+        </div>
+        <time id="clock" class="clock" aria-label="Hora local">--:--:--</time>
+        <button id="matrixToggle" class="btn btn-quiet" type="button">Matrix</button>
+        <button id="refreshButton" class="btn" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3.2h-3.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Comprobar ahora</span></button>
       </div>
     </header>
 
-    <section class="environment-bar" aria-label="Entorno">
-      <button class="env active" data-env="core" type="button">CORE</button>
-      <button class="env" data-env="staging" type="button">STAGING</button>
-      <span id="livePulse" class="live-pill" role="status" aria-live="polite" data-state="checking" aria-describedby="livePulseHelp"><i></i><span class="live-text">Comprobando</span></span><span id="livePulseHelp" class="sr-only">Sondeo periódico cada 10 segundos; no es conexión en tiempo real mediante push.</span>
-    </section>
-
-    <section id="status-overview" class="verdict" aria-live="polite">
-      <div class="orb-wrap" aria-hidden="true">
-        <div id="statusOrb" class="status-orb checking"><span></span></div>
-      </div>
-      <div class="verdict-copy">
-        <p id="eyebrow" class="eyebrow">ESTADO DEL SISTEMA</p>
-        <h1><span id="environmentName">CORE</span> <em>·</em> <span id="overallLabel">COMPROBANDO</span></h1>
-        <p id="heroMessage" class="hero-message">Consultando los puntos críticos de OCRE-OS.</p>
-      </div>
-    </section>
-
-    <section class="domains" aria-label="Resumen de dominios">
-      <button class="domain" data-domain="platform" data-tone="unknown" type="button"><span class="domain-name">PLATAFORMA</span><strong class="domain-state" id="domPlatformState">—</strong><span class="domain-text" id="domPlatformText"></span></button>
-      <button class="domain" data-domain="agents" data-tone="unknown" type="button"><span class="domain-name">AGENTES</span><strong class="domain-state" id="domAgentsState">—</strong><span class="domain-text" id="domAgentsText"></span></button>
-      <button class="domain" data-domain="dev" data-tone="unknown" type="button"><span class="domain-name">DESARROLLO</span><strong class="domain-state" id="domDevState">—</strong><span class="domain-text" id="domDevText"></span></button>
-    </section>
-
-    <section class="attention" aria-labelledby="attentionHeading">
-      <h2 id="attentionHeading">Requiere atención <span id="attentionCount" class="count"></span></h2>
-      <ul id="attentionList" class="attention-list"></ul>
-    </section>
-
-    <section class="load" aria-labelledby="loadHeading">
-      <div class="load-head"><h2 id="loadHeading">Agentes <small class="section-hint">ocupación · cuota · turno</small></h2><small id="loadTime" class="cycle-state">Sin muestra reciente</small></div>
-      <div id="loadGrid" class="load-grid"><p class="load-empty">Sin medición reciente de la carga.</p></div>
-      <p class="agents-note">Ocupación = tareas reservadas, no progreso. Actividad, cuota y autenticación son señales distintas.</p>
-    </section>
-
-    <section class="details" aria-label="Detalle">
-      <details id="det-platform" class="detail" open>
-        <summary><span>Plataforma</span><small id="cycleState" class="cycle-state">Preparando ciclo</small></summary>
-        <div id="checksGrid" class="rows"></div>
-        <div class="platform-actions"><button id="platformMore" class="platform-more" type="button" aria-controls="checksGrid" aria-expanded="false">Mostrar todos los servicios</button><button id="platformDescriptions" class="platform-more" type="button" aria-controls="checksGrid" aria-pressed="false">Descripciones</button></div>
-      </details>
-      <details id="det-agents" class="detail agents-panel">
-        <summary><span>Estado de ejecución</span><small id="agents-time" class="cycle-state">Sin muestra reciente</small></summary>
-        <div class="rows">
-          <article id="agent-claude" class="row agent-card" data-state="unknown"><h3>Claude</h3><p class="agent-state" aria-live="polite">Sin información</p><p class="agent-detail">Sin una señal reciente confirmada</p></article>
-          <article id="agent-codex" class="row agent-card" data-state="unknown"><h3>Codex</h3><p class="agent-state" aria-live="polite">Sin información</p><p class="agent-detail">Sin una señal reciente confirmada</p></article>
+    <main class="grid">
+      <section id="status-overview" class="panel verdict" aria-labelledby="verdictTitle">
+        <div class="verdict-head">
+          <div id="mainLamp" class="lamp lamp-xl" data-tone="checking" aria-hidden="true"><span></span></div>
+          <div class="verdict-copy">
+            <p class="verdict-env"><span id="environmentName">Core</span> <span id="envNote" class="env-note">plataforma de producción</span></p>
+            <h1 id="verdictTitle" class="verdict-title">Comprobando</h1>
+          </div>
         </div>
-        <p class="agents-note">Estado de ejecución, no porcentaje de avance. Una sesión abierta puede estar en espera.</p>
-      </details>
-      <details id="det-dev" class="detail" open>
-        <summary><span>Desarrollo</span><small class="cycle-state">Versión, validación, cola y Xpress</small></summary>
-        <div class="rows">
-          <article class="row meta"><h3>Versión</h3><p><strong id="version">—</strong> <small id="commit">commit no informado</small></p></article>
-          <article class="row meta"><h3>Latencia</h3><p><strong id="latency">—</strong> <small>observador → plataforma</small></p></article>
-          <article class="row meta"><h3>Última comprobación</h3><p><strong id="checkedAt">—</strong> <small id="age">sin muestra</small></p></article>
-          <article class="row meta"><h3>Contrato</h3><p><strong id="contractState">—</strong> <small>ocre-status-v1</small></p></article>
-          <article id="validation-card" class="row agent-card" data-state="unknown"><h3>Última validación</h3><p class="agent-state" aria-live="polite">Sin señal</p><p class="agent-detail">Sin resultado de validación registrado.</p></article>
-          <article id="supervisor-card" class="row agent-card" data-state="unknown"><h3>Cola autónoma</h3><p class="agent-state" aria-live="polite">Sin señal</p><p class="agent-detail">Sin resumen reciente del supervisor.</p></article>
-          <article id="xpress-card" class="row agent-card" data-state="unknown"><h3>Bandeja Xpress</h3><p class="agent-state" aria-live="polite">Sin información</p><p class="agent-detail">Sin una señal reciente confirmada</p><p id="xpress-counts" class="agent-detail"></p></article>
+        <p id="verdictMessage" class="verdict-message" aria-live="polite">Consultando los puntos críticos de OCRE OS.</p>
+
+        <dl class="readouts">
+          <div class="readout readout-latency">
+            <dt>Latencia</dt>
+            <dd><strong id="latency" class="num">—</strong><span class="unit">ms</span></dd>
+            <div id="latencyChart" class="spark" role="img" aria-label="Latencia de las últimas lecturas"></div>
+          </div>
+          <div class="readout">
+            <dt>Muestra</dt>
+            <dd><strong id="sampleAge" class="num">—</strong></dd>
+            <p id="sampleDetail" class="readout-note">sin muestra</p>
+          </div>
+          <div class="readout">
+            <dt>Versión</dt>
+            <dd><strong id="version" class="num">—</strong></dd>
+            <p id="commit" class="readout-note">commit no informado</p>
+          </div>
+        </dl>
+      </section>
+
+      <section id="det-platform" class="panel platform" aria-labelledby="platformTitle">
+        <header class="panel-head">
+          <h2 id="platformTitle">Plataforma</h2>
+          <p id="platformSummary" class="panel-meta">—</p>
+          <div class="history" aria-label="Estado general en las últimas lecturas de esta pestaña">
+            <span class="history-label">Últimas lecturas</span>
+            <svg id="historyStrip" class="history-strip" viewBox="0 0 240 14" preserveAspectRatio="none" aria-hidden="true"></svg>
+          </div>
+        </header>
+        <div id="annunciator" class="annunciator" role="list"></div>
+        <p class="panel-foot"><span class="crit-key" aria-hidden="true"></span> Punto crítico: si falla, OCRE OS deja de funcionar. Los demás solo degradan.</p>
+      </section>
+
+      <section id="loadHeading" class="panel agents" aria-labelledby="agentsTitle">
+        <header class="panel-head">
+          <h2 id="agentsTitle">Agentes</h2>
+          <p id="agentsMeta" class="panel-meta">Sin muestra reciente</p>
+        </header>
+        <div id="agentsGrid" class="agents-grid">
+          <article class="agent" id="agent-claude" data-name="claude"></article>
+          <article class="agent" id="agent-codex" data-name="codex"></article>
         </div>
-        <p class="agents-note">Datos de Xpress agregados y sanitizados. Sin mensajes ni identificadores; las señales ausentes no se interpretan como estado correcto.</p>
-      </details>
-      <details id="det-activity" class="detail" open>
-        <summary><span>Actividad reciente</span><small id="activityCount" class="cycle-state">Sin eventos</small></summary>
-        <ul id="activityList" class="activity-list"><li class="activity-empty">Sin eventos recientes.</li></ul>
-        <p class="agents-note">Despliegues de staging y cambios del monitor. Sin textos ni rutas.</p>
-      </details>
-    </section>
+      </section>
 
-    <nav class="status-mobile-nav" aria-label="Secciones de Status">
-      <a href="#status-overview" data-panel="status-overview" aria-current="location"><span aria-hidden="true">●</span>Estado</a>
-      <a href="#det-platform" data-panel="det-platform"><span aria-hidden="true">▤</span>Servicios</a>
-      <a href="#loadHeading" data-panel="loadHeading"><span aria-hidden="true">◉</span>Agentes</a>
-      <a href="#det-dev" data-panel="det-dev"><span aria-hidden="true">⌘</span>Desarrollo</a>
-      <a href="#det-activity" data-panel="det-activity"><span aria-hidden="true">≡</span>Actividad</a>
-    </nav>
+      <section id="det-dev" class="panel dev" aria-labelledby="devTitle">
+        <header class="panel-head">
+          <h2 id="devTitle">Desarrollo</h2>
+          <p id="devMeta" class="panel-meta">Validación, cola autónoma y Xpress</p>
+        </header>
+        <div class="dev-body">
+          <div class="dev-row" id="validation"></div>
+          <div class="dev-row dev-queue" id="supervisor"></div>
+          <div class="dev-row" id="xpress"></div>
+        </div>
+      </section>
 
-    <footer>
-      <div class="legend">
-        <span><i class="dot healthy"></i> Operativo</span><span><i class="dot degraded"></i> Degradado</span><span><i class="dot failed"></i> Falla</span><span><i class="dot stale"></i> Obsoleto</span><span><i class="dot unknown"></i> Sin señal</span><span><i class="dot neutral"></i> No configurado</span>
-      </div>
-      OCRE Tecnologías · diagnóstico público sanitizado · sin información de clientes
+      <section class="panel alerts" aria-labelledby="alertsTitle">
+        <header class="panel-head">
+          <h2 id="alertsTitle">Avisos</h2>
+          <p id="alertsCount" class="count-badge" data-count="0">0</p>
+        </header>
+        <ul id="alertsList" class="alerts-list"></ul>
+      </section>
+
+      <section id="det-activity" class="panel activity" aria-labelledby="activityTitle">
+        <header class="panel-head">
+          <h2 id="activityTitle">Actividad</h2>
+          <p id="activityMeta" class="panel-meta">Despliegues de staging y cambios del monitor</p>
+        </header>
+        <div id="timeline" class="timeline"></div>
+        <ol id="activityList" class="activity-list"></ol>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <ul class="legend" aria-label="Significado de los colores">
+        <li data-tone="healthy">Operativo</li><li data-tone="degraded">Degradado</li><li data-tone="failed">Falla</li><li data-tone="stale">Obsoleto</li><li data-tone="unknown">Sin señal</li><li data-tone="neutral">No configurado</li>
+      </ul>
+      <p>OCRE Tecnologías. Diagnóstico público: sin datos de clientes.</p>
     </footer>
-  </main>
+  </div>
 
-  <section id="matrixMode" class="matrix-mode" hidden role="dialog" aria-modal="true" aria-label="Matrix Mode">
+  <div id="tooltip" class="tooltip" role="tooltip" hidden></div>
+
+  <section id="matrixMode" class="matrix-mode" hidden role="dialog" aria-modal="true" aria-label="Modo Matrix">
     <canvas id="matrixCanvas" aria-hidden="true"></canvas>
+    <canvas id="matrixText" aria-hidden="true"></canvas>
     <div class="matrix-scanlines" aria-hidden="true"></div>
-    <button id="matrixExit" class="matrix-exit" type="button">EXIT MATRIX</button>
-    <div id="matrixHint" class="matrix-hint">LIVE TELEMETRY / OCRE OS</div>
+    <button id="matrixExit" class="matrix-exit" type="button">Salir de Matrix</button>
+    <div id="matrixHint" class="matrix-hint">Telemetría en vivo · OCRE OS</div>
   </section>
 
-  <script src="status.js?v=20261030-ocre075"></script>
-  <script src="view.js?v=20261030-ocre075"></script>
-  <script src="matrix.js?v=20261030-ocre075"></script>
-  <script src="config.js?v=20261118-relay2"></script>
-  <script src="app.js?v=20261118-relay2"></script>
-  <script src="agents.js?v=20261030-ocre075"></script>
-  <script src="agents-ui.js?v=20261118-relay2"></script>
-  <script src="xpress.js?v=20261030-ocre075"></script>
-  <script src="xpress-ui.js?v=20261030-ocre075"></script>
-  <script src="devenv.js?v=20261118-relay2"></script>
-  <script src="compact-ui.js?v=20261118-relay2"></script>
-  <script src="mobile-nav.js?v=20261030-ocre075"></script>
-  <script src="devenv-ui.js?v=20261118-relay2"></script>
+  <script src="status.js?v=20261118-tablero1"></script>
+  <script src="view.js?v=20261118-tablero1"></script>
+  <script src="agents.js?v=20261118-tablero1"></script>
+  <script src="xpress.js?v=20261118-tablero1"></script>
+  <script src="devenv.js?v=20261118-tablero1"></script>
+  <script src="compact-ui.js?v=20261118-tablero1"></script>
+  <script src="matrix.js?v=20261118-tablero1"></script>
+  <script src="config.js?v=20261118-tablero1"></script>
+  <script src="app.js?v=20261118-tablero1"></script>
 </body>
 </html>

@@ -81,14 +81,29 @@ HEARTBEAT_TOKEN=dev npm start    # http://localhost:3000
 - El último heartbeat vive en memoria: tras un reinicio se ve `no_heartbeat` hasta el siguiente envío (≤ 10 s).
 - En esta página el check `web` de la UI indica que **este** servidor responde, no que `os.ocre.mx` sea
   accesible desde Internet.
-- `public/` es una copia de `ocre-os/apps/os-status` (commit `33c55ce`) más `config.js` y un override
-  de destinos en `app.js`. Los cambios de UI deben llevarse a ambos lados hasta consolidar una sola fuente.
+- `public/` partía de una copia de `ocre-os/apps/os-status`. Desde el rediseño del tablero (noviembre 2026) la UI
+  de este repo es la fuente principal: los módulos sin DOM (`status.js`, `view.js`, `agents.js`, `xpress.js`,
+  `devenv.js`, `compact-ui.js`) siguen siendo compatibles con los de `ocre-os/apps`, pero `index.html`, `board.css`
+  y `app.js` ya no.
 
 ## Repo público
 
 Este repo es público para que GitHub Actions corra sin costo. Los secretos viven solo en GitHub y
 GoDaddy; `godaddy.sh` enmascara IDs de suscripción y no imprime valores de secretos. Solo quien tiene
 escritura en `ocre-os/status` puede lanzar `ops.yml`.
+
+## Interfaz
+
+Tablero de control pensado para leerse de un vistazo:
+
+- **Escritorio (≥ 1180 px de ancho y ≥ 700 px de alto):** todo cabe en una sola pantalla, sin scroll. Dos filas:
+  veredicto · panel de anunciadores de la plataforma · avisos, y agentes · desarrollo · actividad.
+- **Tableta y móvil:** las mismas piezas apiladas; en móvil el veredicto y los avisos van primero.
+- La CSP (`style-src 'self'`) prohíbe atributos `style` en el HTML; los tamaños dinámicos se fijan con CSSOM
+  (`el.style.width = …`) desde `app.js`.
+- Tipografía Barlow / Barlow Condensed (OFL), servida desde `public/fonts/`.
+- Colores de estado reservados: operativo, degradado, falla, obsoleto, sin señal y no configurado. Siempre van con
+  ícono y texto, nunca solo color. El ocre de la marca no se usa para estados.
 
 ## Recursos de UI/UX
 

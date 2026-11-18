@@ -154,3 +154,20 @@ test('canales agents/devenv: token, contrato, reenvío intacto y frescura', asyn
     assert.equal((await fetch(`${base}/api/agents`, { method: 'POST' })).status, 405);
   });
 });
+
+test('UI: la página respeta la CSP y todos sus recursos existen', () => {
+  const fs = require('node:fs');
+  const dir = path.join(__dirname, '..', 'public');
+  const html = fs.readFileSync(path.join(dir, 'index.html'), 'utf8');
+  assert.doesNotMatch(html, /\sstyle=/, 'style-src self bloquea atributos style');
+  assert.doesNotMatch(html, /<script>(?!<\/script>)|<style>/, 'sin scripts ni estilos en línea');
+  const refs = [...html.matchAll(/(?:src|href)="([^"?#]+)/g)].map((m) => m[1]).filter((r) => !r.startsWith('http') && r !== '../');
+  assert.ok(refs.length >= 10);
+  for (const ref of refs) assert.ok(fs.existsSync(path.join(dir, ref)), 'falta ' + ref);
+  const css = fs.readFileSync(path.join(dir, 'board.css'), 'utf8');
+  for (const m of css.matchAll(/url\(([^)]+)\)/g)) assert.ok(fs.existsSync(path.join(dir, m[1])), 'falta ' + m[1]);
+  for (const js of ['app.js', 'matrix.js']) {
+    const src = fs.readFileSync(path.join(dir, js), 'utf8');
+    assert.doesNotMatch(src, /style="/, js + ': nada de atributos style en el HTML generado');
+  }
+});
