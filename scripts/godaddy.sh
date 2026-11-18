@@ -91,6 +91,20 @@ cmd_bootstrap() {
   [[ -n ${GITHUB_STEP_SUMMARY:-} ]] && echo "**GODADDY_APP_ID=\`$app_id\`**" >> "$GITHUB_STEP_SUMMARY"
 }
 
+cmd_domains() {
+  need_app
+  api GET "/apps/$GODADDY_APP_ID/domains" \
+    | jq '[.items[]? | {domainId, hostname, role, verificationStatus, anycastIp, certificateValidationCname, cdnStatus}]'
+}
+
+# Adjunta un dominio propio e imprime los registros DNS que hay que crear (A y CNAME de _acme-challenge).
+cmd_attach_domain() {
+  need_app
+  local host=${HOSTNAME_TO_ATTACH:?Falta HOSTNAME_TO_ATTACH}
+  api POST "/apps/$GODADDY_APP_ID/domains" -H "$(idem)" -H 'Content-Type: application/json' \
+    -d "$(jq -nc --arg h "$host" '{hostname:$h}')" | jq '{domainId, hostname, verificationStatus, anycastIp, certificateValidationCname}'
+}
+
 cmd_delete_app() {
   local id=${TARGET_APP_ID:?Falta TARGET_APP_ID}
   [[ ${CONFIRM:-} == "$id" ]] || die "Para borrar, CONFIRM debe repetir exactamente el App ID"

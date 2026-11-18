@@ -6,7 +6,7 @@ on:
         description: Operación
         required: true
         type: choice
-        options: [status, app, deployments, logs, secrets, restart, list-apps, subscriptions, bootstrap, delete-app]
+        options: [status, app, deployments, logs, secrets, restart, list-apps, subscriptions, domains, attach-domain, bootstrap, delete-app]
       variant:
         description: Variante (logs, secrets, restart)
         type: choice
@@ -15,6 +15,9 @@ on:
       app_name:
         description: Nombre para bootstrap
         default: ocre-status
+      hostname:
+        description: Dominio para attach-domain
+        default: status.ocre.mx
       target_app_id:
         description: App ID a borrar (delete-app)
         default: ''
@@ -35,6 +38,7 @@ jobs:
       GODADDY_APP_ID: ${{ vars.GODADDY_APP_ID }}
       VARIANT: ${{ inputs.variant }}
       APP_NAME: ${{ inputs.app_name }}
+      HOSTNAME_TO_ATTACH: ${{ inputs.hostname }}
       TARGET_APP_ID: ${{ inputs.target_app_id }}
       CONFIRM: ${{ inputs.confirm }}
     steps:
