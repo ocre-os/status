@@ -25,7 +25,7 @@ api() {
     -H "Authorization: Bearer $GDDY_PAT" -H 'Accept: application/json' "$@")
   if [[ $code != 2* ]]; then
     echo "::error::$method $path -> HTTP $code" >&2
-    jq -c '{code, message, fields}' "$out" 2>/dev/null >&2 || head -c 600 "$out" >&2
+    jq -c . "$out" >&2 2>/dev/null || head -c 600 "$out" >&2
     rm -f "$out"; return 1
   fi
   cat "$out"; rm -f "$out"
