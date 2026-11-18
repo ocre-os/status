@@ -123,7 +123,7 @@ cmd_deploy() {
   import=$(api POST "/apps/$GODADDY_APP_ID/imports" -H "$(idem)" -F "file=@$zip;type=application/zip" | jq -r '.importId')
   poll "/apps/$GODADDY_APP_ID/imports/$import" >/dev/null
   log "Código subido a preview (import $import)"
-  deployment=$(api POST "/apps/$GODADDY_APP_ID/deployments" -H "$(idem)" | jq -r '.deploymentId')
+  deployment=$(api POST "/apps/$GODADDY_APP_ID/deployments" -H "$(idem)" -H "Content-Length: 0" | jq -r '.deploymentId')
   poll "/apps/$GODADDY_APP_ID/deployments/$deployment" >/dev/null
   log "Publicado (deployment $deployment)"
   for _ in $(seq 1 24); do

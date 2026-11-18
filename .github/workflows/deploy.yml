@@ -16,8 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
       - run: npm test
@@ -34,7 +34,7 @@ jobs:
       PUBLIC_URL: ${{ vars.PUBLIC_URL }}
       HEARTBEAT_TOKEN: ${{ secrets.HEARTBEAT_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Comprobar configuración
         id: cfg
         run: |
