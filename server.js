@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { Relay, ChannelRelay, CHANNELS, MAX_BODY_BYTES } = require('./lib/relay');
+const { UpstreamProxy } = require('./lib/upstream');
 
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const TYPES = {
@@ -76,7 +77,7 @@ function serveStatic(req, res, pathname) {
   });
 }
 
-function createServer({ relay = new Relay(), channels = new ChannelRelay(), token = process.env.HEARTBEAT_TOKEN } = {}) {
+function createServer({ relay = new Relay(), channels = new ChannelRelay(), token = process.env.HEARTBEAT_TOKEN, staging = new UpstreamProxy() } = {}) {
   return http.createServer(async (req, res) => {
     const { pathname } = new URL(req.url, 'http://localhost');
     try {
@@ -123,6 +124,16 @@ function createServer({ relay = new Relay(), channels = new ChannelRelay(), toke
         }
         const result = channels.accept(write[1], payload);
         return result.ok ? sendJson(res, 202, { accepted: true }) : sendJson(res, 422, { error: result.error });
+      }
+      const proxied = pathname.match(/^\/api\/staging\/([a-z-]+)$/);
+      if (proxied && UpstreamProxy.has(proxied[1])) {
+        if (req.method === 'OPTIONS') {
+          res.writeHead(204, { ...SECURITY_HEADERS, ...corsHeaders() });
+          return res.end();
+        }
+        if (req.method !== 'GET') return sendJson(res, 405, { error: 'method_not_allowed' }, { Allow: 'GET' });
+        const result = await staging.get(proxied[1]);
+        return sendJson(res, result.status, result.body, corsHeaders());
       }
       if (pathname === '/healthz') return sendJson(res, 200, { ok: true });
       if (req.method !== 'GET' && req.method !== 'HEAD') return sendJson(res, 405, { error: 'method_not_allowed' });

@@ -171,3 +171,51 @@ test('UI: la página respeta la CSP y todos sus recursos existen', () => {
     assert.doesNotMatch(src, /style="/, js + ': nada de atributos style en el HTML generado');
   }
 });
+
+test('proxy de staging: solo rutas de la lista, caché y una consulta en vuelo', async () => {
+  const { UpstreamProxy } = require('../lib/upstream');
+  let calls = 0, t = 0;
+  const fetchImpl = async (url, opts) => {
+    calls++;
+    assert.equal(url, 'https://staging.example/api/status');
+    assert.equal(opts.redirect, 'error');
+    await new Promise((r) => setTimeout(r, 5));
+    return { status: 200, text: async () => JSON.stringify({ contract: 'ocre-status-v1', observed_at: 'x' }) };
+  };
+  const proxy = new UpstreamProxy({ origin: 'https://staging.example/', fetchImpl, now: () => t, ttlMs: 5000 });
+  const [a, b] = await Promise.all([proxy.get('status'), proxy.get('status')]);
+  assert.equal(calls, 1);
+  assert.equal(a.status, 200);
+  assert.deepEqual(a.body, b.body);
+  t = 4000; await proxy.get('status'); assert.equal(calls, 1);
+  t = 6000; await proxy.get('status'); assert.equal(calls, 2);
+  assert.equal((await proxy.get('../secret')).status, 404);
+});
+
+test('proxy de staging: falla cerrado ante errores, JSON inválido o respuestas enormes', async () => {
+  const { UpstreamProxy } = require('../lib/upstream');
+  const mk = (impl) => new UpstreamProxy({ fetchImpl: impl, ttlMs: 0 });
+  assert.deepEqual(await mk(async () => { throw new Error('down'); }).get('status'), { status: 502, body: { error: 'upstream_unavailable' } });
+  assert.equal((await mk(async () => ({ status: 200, text: async () => '<html>' })).get('status')).body.error, 'upstream_invalid_json');
+  assert.equal((await mk(async () => ({ status: 200, text: async () => '[1]' })).get('status')).body.error, 'upstream_invalid_json');
+  assert.equal((await mk(async () => ({ status: 200, text: async () => 'x'.repeat(70000) })).get('status')).body.error, 'upstream_too_large');
+  const kept = await mk(async () => ({ status: 503, text: async () => '{"contract":"ocre-status-v1"}' })).get('status');
+  assert.equal(kept.status, 503);
+});
+
+test('servidor: /api/staging/* usa el proxy y solo acepta GET', async () => {
+  const staging = { get: async (name) => ({ status: 200, body: { proxied: name } }) };
+  const server = createServer({ staging, token: 't' });
+  await new Promise((r) => server.listen(0, r));
+  const base = 'http://127.0.0.1:' + server.address().port;
+  try {
+    const ok = await fetch(base + '/api/staging/xpress-status');
+    assert.equal(ok.status, 200);
+    assert.deepEqual(await ok.json(), { proxied: 'xpress-status' });
+    assert.equal(ok.headers.get('access-control-allow-origin'), '*');
+    assert.equal((await fetch(base + '/api/staging/status', { method: 'POST' })).status, 405);
+    assert.equal((await fetch(base + '/api/staging/agents')).status, 404);
+  } finally {
+    server.close();
+  }
+});

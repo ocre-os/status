@@ -25,6 +25,7 @@ navegador ◀── página os-status ◀── /api/status (último ocre-status
 | POST | `/api/heartbeat` | Solo con `Authorization: Bearer $HEARTBEAT_TOKEN`. Máx. 64 KB. |
 | GET | `/api/agents`, `/api/devenv` | Última muestra `ocre-agents-v1` / `ocre-devenv-v1` de Core, intacta, más bloque `relay`. La UI juzga la frescura por `observed_at`. |
 | POST | `/api/heartbeat/agents`, `/api/heartbeat/devenv` | Mismo token. Core (staging, en la X280) es la fuente de verdad de esos contratos; el relay no los reinterpreta. |
+| GET | `/api/staging/status`, `/api/staging/xpress-status` | Proxy de solo lectura hacia `staging.ocre.mx` (`STAGING_ORIGIN`), caché de 5 s y una consulta en vuelo por ruta. Core solo autoriza el CORS de `apps.ocre.mx` y no se amplía: la página lee staging desde su propio dominio. |
 | GET | `/healthz` | Comprobación de vida del servicio. |
 | GET | `/` | Página de estado (copia de `ocre-os/apps/os-status`, con `config.js`). |
 
