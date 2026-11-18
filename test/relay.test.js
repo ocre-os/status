@@ -1,0 +1,135 @@
+'use strict';
+
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const path = require('node:path');
+const { Relay, STALE_AFTER_MS, EXPIRED_AFTER_MS } = require('../lib/relay');
+const { createServer } = require('../server');
+const UI = require(path.join(__dirname, '..', 'public', 'status.js'));
+
+const sample = (overrides = {}) => ({
+  contract: 'ocre-status-v1',
+  observed_at: '2026-11-18T13:00:00.000Z',
+  checks: {
+    api: { status: 'healthy' },
+    database: { status: 'healthy' },
+    schema: { status: 'healthy' },
+    worker: { status: 'failed', reason: 'heartbeat_expired' },
+    media: { status: 'not_configured' },
+  },
+  deployment: { commit: 'abc1234', secret: 'x'.repeat(200) },
+  ...overrides,
+});
+
+function clock(start = 1_000_000) {
+  let t = start;
+  return { now: () => t, advance: (ms) => (t += ms) };
+}
+
+test('sin heartbeat: todo desconocido con no_heartbeat y la UI no lo muestra operativo', () => {
+  const snap = new Relay().snapshot();
+  assert.equal(snap.relay.state, 'no_heartbeat');
+  assert.equal(snap.checks.api.status, 'unknown');
+  assert.equal(snap.checks.api.reason, 'no_heartbeat');
+  assert.equal(UI.normalizeContract(snap).overall, 'unknown');
+});
+
+test('heartbeat vigente se reenvía tal cual y descarta campos fuera del contrato', () => {
+  const c = clock();
+  const relay = new Relay({ now: c.now });
+  assert.deepEqual(relay.accept(sample()), { ok: true });
+  c.advance(5_000);
+  const snap = relay.snapshot();
+  assert.equal(snap.relay.state, 'current');
+  assert.equal(snap.checks.api.status, 'healthy');
+  assert.deepEqual(snap.deployment, { commit: 'abc1234' }); // 'secret' se descarta
+  assert.equal(relay.latest.payload.deployment.secret, undefined);
+});
+
+test('conserva commit válido en deployment', () => {
+  const relay = new Relay();
+  relay.accept(sample({ deployment: { commit: 'abc1234' } }));
+  assert.equal(relay.snapshot().deployment.commit, 'abc1234');
+});
+
+test('muestra vieja se marca obsoleta; fallas y no_configurado se conservan', () => {
+  const c = clock();
+  const relay = new Relay({ now: c.now });
+  relay.accept(sample());
+  c.advance(STALE_AFTER_MS + 1);
+  let snap = relay.snapshot();
+  assert.equal(snap.relay.state, 'stale');
+  assert.deepEqual(snap.checks.api, { status: 'stale', reason: 'heartbeat_stale' });
+  assert.equal(snap.checks.worker.status, 'failed');
+  assert.equal(snap.checks.media.status, 'not_configured');
+  // Una página abierta en frío (primera muestra) también debe verla obsoleta.
+  assert.equal(UI.normalizeContract(snap).overall, 'stale');
+  c.advance(EXPIRED_AFTER_MS);
+  snap = relay.snapshot();
+  assert.equal(snap.relay.state, 'expired');
+  assert.equal(snap.checks.api.reason, 'heartbeat_expired');
+});
+
+test('rechaza heartbeats fuera de contrato', () => {
+  const relay = new Relay();
+  assert.equal(relay.accept(null).error, 'body_not_object');
+  assert.equal(relay.accept(sample({ contract: 'otro' })).error, 'contract_mismatch');
+  assert.equal(relay.accept(sample({ observed_at: 'ayer' })).error, 'observed_at_invalid');
+  assert.equal(relay.accept(sample({ checks: { api: { status: 'ok' } } })).error, 'check_invalid:api');
+  assert.equal(relay.accept(sample({ checks: { api: { status: 'healthy', reason: 'Bad Reason' } } })).error, 'reason_invalid:api');
+  assert.equal(relay.latest, null);
+});
+
+async function withServer(opts, fn) {
+  const server = createServer(opts);
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    await fn(base);
+  } finally {
+    await new Promise((r) => server.close(r));
+  }
+}
+
+test('HTTP: token, validación, estado, estáticos y path traversal', async () => {
+  await withServer({ token: 'secreto-de-prueba' }, async (base) => {
+    const post = (body, auth = 'Bearer secreto-de-prueba') =>
+      fetch(`${base}/api/heartbeat`, { method: 'POST', headers: { Authorization: auth, 'Content-Type': 'application/json' }, body });
+
+    assert.equal((await post(JSON.stringify(sample()), 'Bearer otro')).status, 401);
+    assert.equal((await post(JSON.stringify(sample()), '')).status, 401);
+    assert.equal((await post('{no json')).status, 400);
+    assert.equal((await post('x'.repeat(70 * 1024))).status, 413);
+    assert.equal((await post(JSON.stringify(sample({ contract: 'v0' })))).status, 422);
+    assert.equal((await post(JSON.stringify(sample()))).status, 202);
+
+    const status = await fetch(`${base}/api/status`);
+    assert.equal(status.status, 200);
+    assert.equal(status.headers.get('cache-control'), 'no-store');
+    assert.equal(status.headers.get('access-control-allow-origin'), '*');
+    const body = await status.json();
+    assert.equal(body.relay.state, 'current');
+    assert.equal(UI.normalizeContract(body).overall, 'degraded'); // worker en falla
+
+    assert.equal((await fetch(`${base}/api/status`, { method: 'POST' })).status, 405);
+    assert.equal((await fetch(`${base}/api/status`, { method: 'OPTIONS' })).status, 204);
+
+    const page = await fetch(`${base}/`);
+    assert.equal(page.status, 200);
+    assert.match(page.headers.get('content-security-policy'), /default-src 'self'/);
+    const html = await page.text();
+    assert.ok(html.indexOf('config.js') < html.indexOf('app.js'), 'config.js debe cargarse antes que app.js');
+    assert.equal((await fetch(`${base}/config.js`)).status, 200);
+    assert.equal((await fetch(`${base}/..%2fserver.js`)).status, 404);
+    assert.equal((await fetch(`${base}/%2e%2e/package.json`)).status, 404);
+    assert.equal((await fetch(`${base}/no-existe.js`)).status, 404);
+    assert.equal((await fetch(`${base}/healthz`)).status, 200);
+  });
+});
+
+test('HTTP: sin HEARTBEAT_TOKEN el endpoint de escritura queda cerrado', async () => {
+  await withServer({ token: '' }, async (base) => {
+    const res = await fetch(`${base}/api/heartbeat`, { method: 'POST', body: JSON.stringify(sample()) });
+    assert.equal(res.status, 503);
+  });
+});

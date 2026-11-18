@@ -1,0 +1,16 @@
+{
+  "name": "ocre-status",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Monitor de estado de OCRE OS: relay de heartbeat y página pública de estado.",
+  "main": "server.js",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "build": "node --check server.js && node --check lib/relay.js",
+    "start": "node server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {}
+}
