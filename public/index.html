@@ -8,7 +8,7 @@
   <title>OCRE OS · Estado</title>
   <link rel="preload" href="fonts/barlow-condensed-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="fonts/barlow-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="board.css?v=20261118-tablero2">
+  <link rel="stylesheet" href="board.css?v=20261119-dontclick">
 </head>
 <body data-overall="checking">
   <div id="normalMode" class="board">
@@ -30,7 +30,7 @@
           <span class="live-text"><strong id="liveLabel">Comprobando</strong><small id="liveDetail">primera lectura</small></span>
         </div>
         <time id="clock" class="clock" aria-label="Hora local">--:--:--</time>
-        <button id="matrixToggle" class="btn btn-quiet" type="button">Matrix</button>
+        <button id="matrixToggle" class="btn btn-quiet" type="button" aria-label="Don't Click Me (abre el modo Matrix)">Don't Click Me</button>
         <button id="refreshButton" class="btn" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3.2h-3.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Comprobar ahora</span></button>
       </div>
     </header>

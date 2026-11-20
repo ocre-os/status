@@ -93,7 +93,7 @@ ul,ol{padding:0;list-style:none}
 .live-text small{font-size:12px;color:var(--ink-3)}
 .clock{font:500 20px/1 var(--cond);color:var(--ink-2);letter-spacing:.03em;font-variant-numeric:tabular-nums;padding:0 4px}
 
-.btn{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 14px;border-radius:7px;border:1px solid var(--line);background:var(--panel-2);font:600 14px/1 var(--sans);cursor:pointer;color:var(--ink)}
+.btn{display:inline-flex;white-space:nowrap;align-items:center;gap:7px;height:34px;padding:0 14px;border-radius:7px;border:1px solid var(--line);background:var(--panel-2);font:600 14px/1 var(--sans);cursor:pointer;color:var(--ink)}
 .btn svg{width:15px;height:15px}
 .btn:hover{border-color:var(--ink-3)}
 .btn-quiet{background:transparent;color:var(--ink-2)}
